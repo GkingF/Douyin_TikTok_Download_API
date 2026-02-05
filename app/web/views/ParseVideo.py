@@ -162,6 +162,10 @@ def parse_video():
                                   put_link(ViewsUtils.t('点击下载', 'Click to download'),
                                            f"/api/download?url={url}&prefix=true&with_watermark=false",
                                            new_window=True)])
+            table_list.insert(8, [ViewsUtils.t('下载视频-无水印至服务器目录', 'Video Download-No-Watermark'),
+                                  put_link(ViewsUtils.t('开始下载', 'Click to download'),
+                                           f"/api/download?url={url}&prefix=true&with_watermark=false&only_server=true",
+                                           new_window=True)])
             # 添加视频信息
             table_list.insert(0, [
                 put_video(data.get('video_data').get('nwm_video_url_HQ'), poster=None, loop=True, width='50%')])

@@ -12,6 +12,9 @@ from starlette.responses import FileResponse
 from app.api.models.APIResponseModel import ErrorResponseModel  # 导入响应模型
 from crawlers.hybrid.hybrid_crawler import HybridCrawler  # 导入混合数据爬虫
 
+import asyncio
+import logging
+
 router = APIRouter()
 HybridCrawler = HybridCrawler()
 
@@ -114,7 +117,8 @@ async def download_file_hybrid(request: Request,
                                    example="https://www.douyin.com/video/7372484719365098803",
                                    description="视频或图片的URL地址，支持抖音|TikTok|Bilibili的分享链接，例如：https://v.douyin.com/e4J8Q7A/ 或 https://www.bilibili.com/video/BV1xxxxxxxxx"),
                                prefix: bool = True,
-                               with_watermark: bool = False):
+                               with_watermark: bool = False,
+                               only_server: bool = False):
     """
     # [中文]
     ### 用途:
@@ -177,9 +181,17 @@ async def download_file_hybrid(request: Request,
             file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
             file_path = os.path.join(download_path, file_name)
 
-            # 判断文件是否存在，存在就直接返回
+            # 判断文件是否存在，存在就直接返回或仅保存在服务器
             if os.path.exists(file_path):
+                if only_server:
+                    return "success"
                 return FileResponse(path=file_path, media_type='video/mp4', filename=file_name)
+
+            # 如果只需要只保存在服务器上，调度后台任务并立即返回
+            if only_server:
+                logging.info("scheduling background download for %s %s", platform, video_id)
+                asyncio.create_task(_background_download_worker(data, prefix, with_watermark))
+                return "success"
 
             # 获取对应平台的headers
             if platform == 'tiktok':
@@ -221,7 +233,10 @@ async def download_file_hybrid(request: Request,
             # async with aiofiles.open(file_path, 'wb') as out_file:
             #     await out_file.write(response.content)
 
-            # 返回文件内容
+            # 如果只需要保存在服务器上，则返回 success，否则返回文件给客户端
+            if only_server:
+                # 如果后台任务已在运行（或其他进程保存了文件），这里也短路返回
+                return "success"
             return FileResponse(path=file_path, filename=file_name, media_type="video/mp4")
 
         # 下载图片文件/Download image file
@@ -230,11 +245,18 @@ async def download_file_hybrid(request: Request,
             zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
             zip_file_path = os.path.join(download_path, zip_file_name)
 
-            # 判断文件是否存在，存在就直接返回、
+            # 判断文件是否存在，存在就直接返回或仅保存在服务器
             if os.path.exists(zip_file_path):
+                if only_server:
+                    return "success"
                 return FileResponse(path=zip_file_path, filename=zip_file_name, media_type="application/zip")
 
             # 获取图片文件/Get image file
+            # 如果只需要只保存在服务器上，调度后台任务并立即返回
+            if only_server:
+                logging.info("scheduling background image download for %s %s", platform, video_id)
+                asyncio.create_task(_background_download_worker(data, prefix, with_watermark))
+                return "success"
             urls = data.get('image_data').get('no_watermark_image_list') if not with_watermark else data.get(
                 'image_data').get('watermark_image_list')
             image_file_list = []
@@ -257,7 +279,9 @@ async def download_file_hybrid(request: Request,
                 for image_file in image_file_list:
                     zip_file.write(image_file, os.path.basename(image_file))
 
-            # 返回压缩文件/Return compressed file
+            # 如果只需要保存在服务器上，则返回 success，否则返回压缩文件给客户端
+            if only_server:
+                return "success"
             return FileResponse(path=zip_file_path, filename=zip_file_name, media_type="application/zip")
 
     # 异常处理/Exception handling
@@ -265,3 +289,182 @@ async def download_file_hybrid(request: Request,
         print(e)
         code = 400
         return ErrorResponseModel(code=code, message=str(e), router=request.url.path, params=dict(request.query_params))
+
+async def bg_fetch_data_stream(url: str, headers: dict = None, file_path: str = None):
+    """Background variant of fetch_data_stream that does not depend on Request and is safe to run in background tasks."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    } if headers is None else headers.get('headers')
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            async with client.stream("GET", url, headers=headers) as response:
+                response.raise_for_status()
+                async with aiofiles.open(file_path, 'wb') as out_file:
+                    async for chunk in response.aiter_bytes():
+                        if chunk:
+                            await out_file.write(chunk)
+        return True
+    except Exception as e:
+        logging.exception("bg_fetch_data_stream failed: %s", e)
+        # cleanup partial file
+        try:
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception:
+            pass
+        return False
+
+async def bg_merge_bilibili_video_audio(video_url: str, audio_url: str, output_path: str, headers: dict) -> bool:
+    """Background variant of merge that downloads video/audio streams and runs ffmpeg in a thread to avoid blocking the event loop."""
+    try:
+        # create temporary files
+        with tempfile.NamedTemporaryFile(suffix='.m4v', delete=False) as video_temp:
+            video_temp_path = video_temp.name
+        with tempfile.NamedTemporaryFile(suffix='.m4a', delete=False) as audio_temp:
+            audio_temp_path = audio_temp.name
+
+        # download streams
+        video_success = await bg_fetch_data_stream(video_url, headers=headers, file_path=video_temp_path)
+        audio_success = await bg_fetch_data_stream(audio_url, headers=headers, file_path=audio_temp_path)
+
+        if not video_success or not audio_success:
+            logging.error("bg_merge: failed to download video or audio stream")
+            # cleanup
+            try:
+                os.unlink(video_temp_path)
+            except Exception:
+                pass
+            try:
+                os.unlink(audio_temp_path)
+            except Exception:
+                pass
+            return False
+
+        ffmpeg_cmd = [
+            'ffmpeg', '-y',
+            '-i', video_temp_path,
+            '-i', audio_temp_path,
+            '-c:v', 'copy',
+            '-c:a', 'copy',
+            '-f', 'mp4',
+            output_path
+        ]
+
+        # run ffmpeg in a thread to avoid blocking
+        def run_ffmpeg():
+            return subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+
+        result = await asyncio.to_thread(run_ffmpeg)
+        logging.info("bg_merge ffmpeg return code: %s", result.returncode)
+        if result.stderr:
+            logging.debug("bg_merge ffmpeg stderr: %s", result.stderr)
+        if result.stdout:
+            logging.debug("bg_merge ffmpeg stdout: %s", result.stdout)
+
+        # cleanup temp files
+        try:
+            os.unlink(video_temp_path)
+        except Exception:
+            pass
+        try:
+            os.unlink(audio_temp_path)
+        except Exception:
+            pass
+
+        return result.returncode == 0
+    except Exception as e:
+        logging.exception("bg_merge_bilibili_video_audio failed: %s", e)
+        try:
+            os.unlink(video_temp_path)
+            os.unlink(audio_temp_path)
+        except Exception:
+            pass
+        return False
+
+async def _background_download_worker(data, prefix: bool, with_watermark: bool):
+    """Background worker to save video/image resources based on parsed `data`."""
+    try:
+        data_type = data.get('type')
+        platform = data.get('platform')
+        video_id = data.get('video_id')
+        file_prefix = config.get("API").get("Download_File_Prefix") if prefix else ''
+        download_path = os.path.join(config.get("API").get("Download_Path"), f"{platform}_{data_type}")
+        os.makedirs(download_path, exist_ok=True)
+
+        if data_type == 'video':
+            file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
+            file_path = os.path.join(download_path, file_name)
+
+            # skip if exists
+            if os.path.exists(file_path):
+                logging.info("background: file already exists %s", file_path)
+                return True
+
+            # get headers
+            if platform == 'tiktok':
+                __headers = await HybridCrawler.TikTokWebCrawler.get_tiktok_headers()
+            elif platform == 'bilibili':
+                __headers = await HybridCrawler.BilibiliWebCrawler.get_bilibili_headers()
+            else:
+                __headers = await HybridCrawler.DouyinWebCrawler.get_douyin_headers()
+
+            if platform == 'bilibili':
+                video_data = data.get('video_data', {})
+                video_url = video_data.get('nwm_video_url_HQ') if not with_watermark else video_data.get('wm_video_url_HQ')
+                audio_url = video_data.get('audio_url')
+                if not video_url or not audio_url:
+                    logging.error("background: missing bilibili video/audio url")
+                    return False
+                success = await bg_merge_bilibili_video_audio(video_url, audio_url, file_path, __headers.get('headers'))
+                if not success:
+                    logging.error("background: bilibili merge failed")
+                    return False
+            else:
+                url_to_fetch = data.get('video_data').get('nwm_video_url_HQ') if not with_watermark else data.get('video_data').get('wm_video_url_HQ')
+                success = await bg_fetch_data_stream(url_to_fetch, headers=__headers, file_path=file_path)
+                if not success:
+                    logging.error("background: fetch_data_stream failed for %s", url_to_fetch)
+                    return False
+
+            logging.info("background: video saved to %s", file_path)
+            return True
+
+        elif data_type == 'image':
+            zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
+            zip_file_path = os.path.join(download_path, zip_file_name)
+            if os.path.exists(zip_file_path):
+                logging.info("background: zip already exists %s", zip_file_path)
+                return True
+
+            urls = data.get('image_data').get('no_watermark_image_list') if not with_watermark else data.get('image_data').get('watermark_image_list')
+            image_file_list = []
+            for url in urls:
+                try:
+                    response = await fetch_data(url)
+                    index = int(urls.index(url))
+                    content_type = response.headers.get('content-type')
+                    file_format = content_type.split('/')[1]
+                    file_name = f"{file_prefix}{platform}_{video_id}_{index + 1}.{file_format}" if not with_watermark else f"{file_prefix}{platform}_{video_id}_{index + 1}_watermark.{file_format}"
+                    file_path = os.path.join(download_path, file_name)
+                    image_file_list.append(file_path)
+                    async with aiofiles.open(file_path, 'wb') as out_file:
+                        await out_file.write(response.content)
+                except Exception:
+                    logging.exception("background: failed to download image %s", url)
+
+            # create zip
+            try:
+                with zipfile.ZipFile(zip_file_path, 'w') as zip_file:
+                    for image_file in image_file_list:
+                        if os.path.exists(image_file):
+                            zip_file.write(image_file, os.path.basename(image_file))
+                logging.info("background: zip saved to %s", zip_file_path)
+                return True
+            except Exception:
+                logging.exception("background: failed to create zip %s", zip_file_path)
+                return False
+
+    except Exception:
+        logging.exception("background: unexpected error")
+        return False
+
