@@ -1,8 +1,10 @@
 import asyncio
 import os
 import time
+import requests
 
 import yaml
+from pywebio import session
 from pywebio.input import *
 from pywebio.output import *
 from pywebio_battery import put_video
@@ -142,6 +144,36 @@ def parse_video():
                       new_window=True)]
 
         ]
+        
+        # 定义触发后台下载的函数
+        def trigger_server_download(target_url=url, p_prefix=True, p_watermark=False):
+            try:
+                host_ip = config['API']['Host_IP']
+                host_port = config['API']['Host_Port']
+                if host_ip == '0.0.0.0':
+                    host_ip = '127.0.0.1'
+                
+                api_url = f"http://{host_ip}:{host_port}/api/download"
+                params = {
+                    'url': target_url,
+                    'prefix': str(p_prefix).lower(),
+                    'with_watermark': str(p_watermark).lower(),
+                    'only_server': 'true'
+                }
+                
+                with put_loading():
+                    response = requests.get(api_url, params=params, timeout=5)
+                    if response.status_code == 200:
+                        toast(ViewsUtils.t('后台下载任务已提交', 'Background download task submitted'), color='success')
+                        # 尝试刷新主页面的任务表格
+                        if 'refresh_task_table' in session.local:
+                            session.local['refresh_task_table']()
+                            
+                    else:
+                        toast(f"Error: {response.text}", color='error')
+            except Exception as e:
+                toast(f"Error: {e}", color='error')
+
         # 如果是视频/If it's video
         if url_type == ViewsUtils.t('视频', 'Video'):
             # 添加视频信息
@@ -162,10 +194,12 @@ def parse_video():
                                   put_link(ViewsUtils.t('点击下载', 'Click to download'),
                                            f"/api/download?url={url}&prefix=true&with_watermark=false",
                                            new_window=True)])
-            table_list.insert(8, [ViewsUtils.t('下载视频-无水印至服务器目录', 'Video Download-No-Watermark'),
-                                  put_link(ViewsUtils.t('开始下载', 'Click to download'),
-                                           f"/api/download?url={url}&prefix=true&with_watermark=false&only_server=true",
-                                           new_window=True)])
+            
+            # 修改为按钮
+            table_list.insert(8, [ViewsUtils.t('下载视频-无水印至服务器目录', 'Video Download-No-Watermark to Server'),
+                                  put_button(ViewsUtils.t('开始下载', 'Start Download'),
+                                           onclick=lambda: trigger_server_download(url, True, False),
+                                           small=True)])
             # 添加视频信息
             table_list.insert(0, [
                 put_video(data.get('video_data').get('nwm_video_url_HQ'), poster=None, loop=True, width='50%')])
@@ -180,6 +214,12 @@ def parse_video():
                                   put_link(ViewsUtils.t('点击下载', 'Click to download'),
                                            f"/api/download?url={url}&prefix=true&with_watermark=false",
                                            new_window=True)])
+            
+            # 修改为按钮
+            table_list.insert(6, [ViewsUtils.t('图片打包下载-无水印至服务器目录', 'Download images ZIP-No-Watermark to Server'),
+                                  put_button(ViewsUtils.t('开始下载', 'Start Download'),
+                                           onclick=lambda: trigger_server_download(url, True, False),
+                                           small=True)])
             # 添加图片信息
             no_watermark_image_list = data.get('image_data').get('no_watermark_image_list')
             for image in no_watermark_image_list:

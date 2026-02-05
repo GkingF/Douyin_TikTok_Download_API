@@ -1,10 +1,13 @@
 # PyWebIO组件/PyWebIO components
 import os
-
+import threading
+import time
+import requests
 import yaml
 from pywebio import session, config as pywebio_config
 from pywebio.input import *
 from pywebio.output import *
+from pywebio.session import register_thread
 
 from app.web.views.About import about_pop_window
 from app.web.views.Document import api_document_pop_window
@@ -77,12 +80,84 @@ class MainView:
                 # Index: 2
                 self.utils.t('🥚小彩蛋', '🥚Easter Egg'),
             ]
+            
+            def render_tasks_table(open_collapse=False):
+                try:
+                    # 获取任务列表
+                    host_ip = _config['API']['Host_IP']
+                    host_port = _config['API']['Host_Port']
+                    if host_ip == '0.0.0.0':
+                        host_ip = '127.0.0.1'
+                    
+                    api_url = f"http://{host_ip}:{host_port}/api/download/tasks"
+                    
+                    response = requests.get(api_url, timeout=2)
+                    if response.status_code == 200:
+                        tasks = response.json()
+                        # 即使没有任务也显示表格框架，或者显示无任务提示
+                        
+                        table_data = [['Task ID', 'Status', 'Platform', 'Created At', 'Action']]
+                        if tasks:
+                            # 按时间倒序
+                            tasks.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+                            
+                            for task in tasks:
+                                meta = task.get('meta', {})
+                                task_id = task.get('id')
+                                
+                                # 创建查看详情的按钮
+                                def show_detail(tid=task_id):
+                                    try:
+                                        detail_url = f"http://{host_ip}:{host_port}/api/download/task/{tid}"
+                                        res = requests.get(detail_url, timeout=2)
+                                        if res.status_code == 200:
+                                            task_detail = res.json()
+                                            popup(self.utils.t('任务详情', 'Task Detail'), [
+                                                put_code(yaml.dump(task_detail, allow_unicode=True), language='yaml')
+                                            ])
+                                    except Exception as e:
+                                        toast(f"Error: {e}", color='error')
+
+                                table_data.append([
+                                    task_id[:8] + '...',
+                                    task.get('status'),
+                                    meta.get('platform', 'Unknown'),
+                                    task.get('created_at'),
+                                    put_button("Detail", onclick=show_detail, small=True)
+                                ])
+                        
+                        with use_scope('task_status_scope', clear=True):
+                            put_collapse(self.utils.t('下载任务状态', 'Download Task Status'), [
+                                put_button(self.utils.t('刷新', 'Refresh'), onclick=lambda: render_tasks_table(True), small=True, outline=True),
+                                put_table(table_data)
+                            ], open=open_collapse)
+                except Exception as e:
+                    # toast(f"Error loading tasks: {e}", color='error')
+                    pass
+
+            # 将刷新函数注册到 session.local，以便其他模块调用
+            # 传入 True 以便在刷新时自动展开
+            session.local['refresh_task_table'] = lambda: render_tasks_table(open_collapse=True)
+
+            def init_tasks_table():
+                # 延迟一点时间，确保 select 组件已经渲染
+                time.sleep(0.5)
+                # 创建scope
+                put_scope('task_status_scope')
+                render_tasks_table()
+
+            # 启动后台线程显示表格
+            t = threading.Thread(target=init_tasks_table)
+            register_thread(t)
+            t.start()
+
             select_options = select(
                 self.utils.t('请在这里选择一个你想要的功能吧 ~', 'Please select a function you want here ~'),
                 required=True,
                 options=options,
                 help_text=self.utils.t('📎选上面的选项然后点击提交', '📎Select the options above and click Submit')
             )
+
             # 根据输入运行不同的函数
             if select_options == options[0]:
                 parse_video()

@@ -2,6 +2,11 @@ import os
 import zipfile
 import subprocess
 import tempfile
+import asyncio
+import logging
+import uuid
+from datetime import datetime
+from typing import Dict, Any
 
 import aiofiles
 import httpx
@@ -12,11 +17,12 @@ from starlette.responses import FileResponse
 from app.api.models.APIResponseModel import ErrorResponseModel  # 导入响应模型
 from crawlers.hybrid.hybrid_crawler import HybridCrawler  # 导入混合数据爬虫
 
-import asyncio
-import logging
-
 router = APIRouter()
 HybridCrawler = HybridCrawler()
+
+# Simple in-memory task store for background downloads
+TASKS: Dict[str, Dict[str, Any]] = {}
+TASKS_LOCK = asyncio.Lock()
 
 # 读取上级再上级目录的配置文件
 config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'config.yaml')
@@ -63,16 +69,16 @@ async def merge_bilibili_video_audio(video_url: str, audio_url: str, request: Re
             video_temp_path = video_temp.name
         with tempfile.NamedTemporaryFile(suffix='.m4a', delete=False) as audio_temp:
             audio_temp_path = audio_temp.name
-        
+
         # 下载视频流
         video_success = await fetch_data_stream(video_url, request, headers=headers, file_path=video_temp_path)
         # 下载音频流
         audio_success = await fetch_data_stream(audio_url, request, headers=headers, file_path=audio_temp_path)
-        
+
         if not video_success or not audio_success:
             print("Failed to download video or audio stream")
             return False
-        
+
         # 使用 FFmpeg 合并视频和音频
         ffmpeg_cmd = [
             'ffmpeg', '-y',  # -y 覆盖输出文件
@@ -83,7 +89,7 @@ async def merge_bilibili_video_audio(video_url: str, audio_url: str, request: Re
             '-f', 'mp4',     # 确保输出格式为MP4
             output_path
         ]
-        
+
         print(f"FFmpeg command: {' '.join(ffmpeg_cmd)}")
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
         print(f"FFmpeg return code: {result.returncode}")
@@ -91,16 +97,16 @@ async def merge_bilibili_video_audio(video_url: str, audio_url: str, request: Re
             print(f"FFmpeg stderr: {result.stderr}")
         if result.stdout:
             print(f"FFmpeg stdout: {result.stdout}")
-        
+
         # 清理临时文件
         try:
             os.unlink(video_temp_path)
             os.unlink(audio_temp_path)
         except:
             pass
-        
+
         return result.returncode == 0
-        
+
     except Exception as e:
         # 清理临时文件
         try:
@@ -165,6 +171,14 @@ async def download_file_hybrid(request: Request,
         code = 400
         return ErrorResponseModel(code=code, message=str(e), router=request.url.path, params=dict(request.query_params))
 
+    # Create Task Record
+    task_id = None
+    try:
+        task_meta = {'meta': {'url': url, 'platform': data.get('platform'), 'video_id': data.get('video_id')}}
+        task_id = await _create_task_record({'status': 'running', 'meta': task_meta['meta']})
+    except Exception:
+        pass
+
     # 开始下载文件/Start downloading files
     try:
         data_type = data.get('type')
@@ -183,15 +197,29 @@ async def download_file_hybrid(request: Request,
 
             # 判断文件是否存在，存在就直接返回或仅保存在服务器
             if os.path.exists(file_path):
+                if task_id:
+                    async with TASKS_LOCK:
+                        TASKS[task_id]['status'] = 'success'
+                        TASKS[task_id]['saved_path'] = os.path.relpath(file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+                        TASKS[task_id]['logs'].append('File already exists')
+                        TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+
                 if only_server:
+                    if task_id: return {'task_id': task_id}
                     return "success"
                 return FileResponse(path=file_path, media_type='video/mp4', filename=file_name)
 
             # 如果只需要只保存在服务器上，调度后台任务并立即返回
             if only_server:
-                logging.info("scheduling background download for %s %s", platform, video_id)
-                asyncio.create_task(_background_download_worker(data, prefix, with_watermark))
-                return "success"
+                if task_id:
+                    await _task_log(task_id, 'scheduled')
+                    asyncio.create_task(_run_background_task(task_id, data, prefix, with_watermark))
+                    return {'task_id': task_id}
+                else:
+                    # Fallback if task creation failed but only_server requested
+                    # Should not happen often, but let's just run background task without ID tracking return
+                    # Or create a new ID?
+                    pass
 
             # 获取对应平台的headers
             if platform == 'tiktok':
@@ -211,7 +239,7 @@ async def download_file_hybrid(request: Request,
                         status_code=500,
                         detail="Failed to get video or audio URL from Bilibili"
                     )
-                
+
                 # 使用专门的函数合并音视频
                 success = await merge_bilibili_video_audio(video_url, audio_url, request, file_path, __headers.get('headers'))
                 if not success:
@@ -233,6 +261,12 @@ async def download_file_hybrid(request: Request,
             # async with aiofiles.open(file_path, 'wb') as out_file:
             #     await out_file.write(response.content)
 
+            if task_id:
+                async with TASKS_LOCK:
+                    TASKS[task_id]['status'] = 'success'
+                    TASKS[task_id]['saved_path'] = os.path.relpath(file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+                    TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+
             # 如果只需要保存在服务器上，则返回 success，否则返回文件给客户端
             if only_server:
                 # 如果后台任务已在运行（或其他进程保存了文件），这里也短路返回
@@ -247,16 +281,26 @@ async def download_file_hybrid(request: Request,
 
             # 判断文件是否存在，存在就直接返回或仅保存在服务器
             if os.path.exists(zip_file_path):
+                if task_id:
+                    async with TASKS_LOCK:
+                        TASKS[task_id]['status'] = 'success'
+                        TASKS[task_id]['saved_path'] = os.path.relpath(zip_file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+                        TASKS[task_id]['logs'].append('Zip already exists')
+                        TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+                
                 if only_server:
+                    if task_id: return {'task_id': task_id}
                     return "success"
                 return FileResponse(path=zip_file_path, filename=zip_file_name, media_type="application/zip")
 
             # 获取图片文件/Get image file
             # 如果只需要只保存在服务器上，调度后台任务并立即返回
             if only_server:
-                logging.info("scheduling background image download for %s %s", platform, video_id)
-                asyncio.create_task(_background_download_worker(data, prefix, with_watermark))
-                return "success"
+                if task_id:
+                    await _task_log(task_id, 'scheduled')
+                    asyncio.create_task(_run_background_task(task_id, data, prefix, with_watermark))
+                    return {'task_id': task_id}
+
             urls = data.get('image_data').get('no_watermark_image_list') if not with_watermark else data.get(
                 'image_data').get('watermark_image_list')
             image_file_list = []
@@ -279,6 +323,12 @@ async def download_file_hybrid(request: Request,
                 for image_file in image_file_list:
                     zip_file.write(image_file, os.path.basename(image_file))
 
+            if task_id:
+                async with TASKS_LOCK:
+                    TASKS[task_id]['status'] = 'success'
+                    TASKS[task_id]['saved_path'] = os.path.relpath(zip_file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+                    TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+
             # 如果只需要保存在服务器上，则返回 success，否则返回压缩文件给客户端
             if only_server:
                 return "success"
@@ -287,6 +337,11 @@ async def download_file_hybrid(request: Request,
     # 异常处理/Exception handling
     except Exception as e:
         print(e)
+        if task_id:
+            async with TASKS_LOCK:
+                TASKS[task_id]['status'] = 'failed'
+                TASKS[task_id]['error'] = str(e)
+                TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
         code = 400
         return ErrorResponseModel(code=code, message=str(e), router=request.url.path, params=dict(request.query_params))
 
@@ -468,3 +523,90 @@ async def _background_download_worker(data, prefix: bool, with_watermark: bool):
         logging.exception("background: unexpected error")
         return False
 
+async def _task_log(task_id: str, message: str):
+    ts = datetime.utcnow().isoformat() + 'Z'
+    async with TASKS_LOCK:
+        task = TASKS.get(task_id)
+        if not task:
+            return
+        task.setdefault('logs', []).append(f"[{ts}] {message}")
+        task['updated_at'] = ts
+
+async def _create_task_record(initial: Dict[str, Any]) -> str:
+    task_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat() + 'Z'
+    record = {
+        'id': task_id,
+        'status': initial.get('status', 'queued'),
+        'created_at': now,
+        'updated_at': now,
+        'meta': initial.get('meta', {}),
+        'saved_path': None,
+        'error': None,
+        'logs': initial.get('logs', []),
+    }
+    async with TASKS_LOCK:
+        TASKS[task_id] = record
+    return task_id
+
+async def _run_background_task(task_id: str, data: Dict[str, Any], prefix: bool, with_watermark: bool):
+    await _task_log(task_id, "task started")
+    async with TASKS_LOCK:
+        TASKS[task_id]['status'] = 'running'
+        TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+    try:
+        # Compute expected save path (same logic as _background_download_worker)
+        data_type = data.get('type')
+        platform = data.get('platform')
+        video_id = data.get('video_id')
+        file_prefix = config.get("API").get("Download_File_Prefix") if prefix else ''
+        download_path = os.path.join(config.get("API").get("Download_Path"), f"{platform}_{data_type}")
+        os.makedirs(download_path, exist_ok=True)
+
+        saved_path = None
+        if data_type == 'video':
+            file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
+            file_path = os.path.join(download_path, file_name)
+
+            await _task_log(task_id, f"downloading video to {file_path}")
+            # reuse background worker to perform actual download
+            success = await _background_download_worker(data, prefix, with_watermark)
+            if not success:
+                raise Exception('background worker failed')
+            saved_path = os.path.relpath(file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+
+        elif data_type == 'image':
+            zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
+            zip_file_path = os.path.join(download_path, zip_file_name)
+            await _task_log(task_id, f"creating zip at {zip_file_path}")
+            success = await _background_download_worker(data, prefix, with_watermark)
+            if not success:
+                raise Exception('background worker failed')
+            saved_path = os.path.relpath(zip_file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+
+        async with TASKS_LOCK:
+            TASKS[task_id]['status'] = 'success'
+            TASKS[task_id]['saved_path'] = saved_path
+            TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+        await _task_log(task_id, 'task completed successfully')
+    except Exception as e:
+        logging.exception('background task failed: %s', e)
+        async with TASKS_LOCK:
+            TASKS[task_id]['status'] = 'failed'
+            TASKS[task_id]['error'] = str(e)
+            TASKS[task_id]['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+        await _task_log(task_id, f'task failed: {e}')
+
+# Task query endpoints
+@router.get('/download/task/{task_id}')
+async def get_download_task(task_id: str):
+    async with TASKS_LOCK:
+        task = TASKS.get(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail='Task not found')
+        return task
+
+@router.get('/download/tasks')
+async def list_download_tasks():
+    async with TASKS_LOCK:
+        return list(TASKS.values())
