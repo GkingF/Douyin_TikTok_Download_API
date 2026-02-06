@@ -7,7 +7,7 @@
 
 [English](./README.en.md)\|[Simplified Chinese](./README.md)
 
-🚀"Douyin_TikTok_Download_API" is a high-performance asynchronous API that can be used out of the box[Tik Tok](https://www.douyin.com)\|[Tiktok](https://www.tiktok.com)\|[Biliable](https://www.bilibili.com)Data crawling tool supports API calling, online batch analysis and downloading.
+🚀"Douyin_TikTok_Download_API" is a high-performance asynchronous API that can be used out of the box[Tik Tok](https://www.douyin.com)\|[TikTok](https://www.tiktok.com)\|[Bilibili](https://www.bilibili.com)Data crawling tool supports API calling, online batch analysis and downloading.
 
 [![GitHub license](https://img.shields.io/github/license/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square)](LICENSE)[![Release Version](https://img.shields.io/github/v/release/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square)](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/releases/latest)[![GitHub Star](https://img.shields.io/github/stars/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square)](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/stargazers)[![GitHub Fork](https://img.shields.io/github/forks/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square)](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/network/members)[![GitHub issues](https://img.shields.io/github/issues/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square)](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/issues)[![GitHub closed issues](https://img.shields.io/github/issues-closed/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square)](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/issues?q=is%3Aissue+is%3Aclosed)![GitHub Repo size](https://img.shields.io/github/repo-size/Evil0ctal/Douyin_TikTok_Download_API?style=flat-square&color=3cb371)<br>[![PyPI v](https://img.shields.io/pypi/v/douyin-tiktok-scraper?style=flat-square&color=%23a8e6cf)](https://pypi.org/project/douyin-tiktok-scraper/)[![PyPI wheel](https://img.shields.io/pypi/wheel/douyin-tiktok-scraper?style=flat-square&color=%23dcedc1)](https://pypi.org/project/douyin-tiktok-scraper/#files)[![PyPI dm](https://img.shields.io/pypi/dm/douyin-tiktok-scraper?style=flat-square&color=%23ffd3b6)](https://pypi.org/project/douyin-tiktok-scraper/)[![PyPI pyversions](https://img.shields.io/pypi/pyversions/douyin-tiktok-scraper?color=%23ffaaa5&style=flat-square)](https://pypi.org/project/douyin-tiktok-scraper/)<br>[![API status](https://img.shields.io/website?down_color=lightgrey&label=API%20Status&down_message=API%20offline&style=flat-square&up_color=%23dfb9ff&up_message=online&url=https%3A%2F%2Fapi.douyin.wtf%2Fdocs)](https://api.douyin.wtf/docs)[![TikHub-API status](https://img.shields.io/website?down_color=lightgrey&label=TikHub-API%20Status&down_message=API%20offline&style=flat-square&up_color=%23dfb9ff&up_message=online&url=https%3A%2F%2Fapi.tikhub.io%2Fdocs)](https://api.tikhub.io/docs)<br>[![爱发电](https://img.shields.io/badge/爱发电-evil0ctal-blue.svg?style=flat-square&color=ea4aaa&logo=github-sponsors)](https://afdian.net/@evil0ctal)[![Kofi](https://img.shields.io/badge/Kofi-evil0ctal-orange.svg?style=flat-square&logo=kofi)](https://ko-fi.com/evil0ctal)[![Patreon](https://img.shields.io/badge/Patreon-evil0ctal-red.svg?style=flat-square&logo=patreon)](https://www.patreon.com/evil0ctal)
 
@@ -15,7 +15,7 @@
 
 ## Sponsor
 
-These sponsors have paid to be placed here,**Doinan_tics_download_api**The project will always be free and open source. If you would like to become a sponsor of this project, please check out my[GitHub Sponsor Page](https://github.com/sponsors/evil0ctal)。
+These sponsors have paid to be placed here,**Douyin_TikTok_Download_API**The project will always be free and open source. If you would like to become a sponsor of this project, please check out my[GitHub Sponsor Page](https://github.com/sponsors/evil0ctal)。
 
 <p align="center">
   <a href="https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad">
@@ -23,11 +23,11 @@ These sponsors have paid to be placed here,**Doinan_tics_download_api**The proje
   </a>
 </p>
 
-[Tickubbub](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)Provides more than 700 endpoints that can be used to obtain and analyze data from 14+ social media platforms - including videos, users, comments, stores, products, trends, etc., complete all data access and analysis in one stop.
+[TikTok](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)Provides more than 700 endpoints that can be used to obtain and analyze data from 14+ social media platforms - including videos, users, comments, stores, products, trends, etc., complete all data access and analysis in one stop.
 
 By checking in every day, you can get free quota. You can use my registration invitation link:[https://user.tikhub.io/users/signup?referral_code=1wRL8eQk](https://user.tikhub.io/users/signup?referral_code=1wRL8eQk&utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)or invitation code:`1wRL8eQk`, you can get it by registering and recharging`$2`Quota.
 
-[Tickubbub](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)The following services are provided:
+[TikTok](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)The following services are provided:
 
 -   Rich data interface
 -   Get free quota by signing in every day
@@ -39,7 +39,7 @@ By checking in every day, you can get free quota. You can use my registration in
 
 > 🚨If you need to use a private server to run this project, please refer to:[Deployment preparations](./README.md#%EF%B8%8F%E9%83%A8%E7%BD%B2%E5%89%8D%E7%9A%84%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C%E8%AF%B7%E4%BB%94%E7%BB%86%E9%98%85%E8%AF%BB),[Docker deployment](./README.md#%E9%83%A8%E7%BD%B2%E6%96%B9%E5%BC%8F%E4%BA%8C-docker),[One-click deployment](./README.md#%E9%83%A8%E7%BD%B2%E6%96%B9%E5%BC%8F%E4%B8%80-linux)
 
-This project is based on[PyWebIO](https://github.com/pywebio/PyWebIO)，[speedy](https://fastapi.tiangolo.com/)，[HTTPX](https://www.python-httpx.org/), fast and asynchronous[Tik Tok](https://www.douyin.com/)/[Tiktok](https://www.tiktok.com/)Data crawling tool, and realizes online batch parsing and downloading of videos or photo albums without watermarks, data crawling API, and iOS shortcut commands without watermark downloads through the Web. You can deploy or modify this project yourself to achieve more functions, or you can call it directly in your project[scraper.py](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/blob/Stable/scraper.py)or install an existing[pip package](https://pypi.org/project/douyin-tiktok-scraper/)As a parsing library, it is easy to crawl data, etc.....
+This project is based on[PyWebIO](https://github.com/pywebio/PyWebIO)，[speedy](https://fastapi.tiangolo.com/)，[HTTPX](https://www.python-httpx.org/), fast and asynchronous[Tik Tok](https://www.douyin.com/)/[TikTok](https://www.tiktok.com/)Data crawling tool, and realizes online batch parsing and downloading of videos or photo albums without watermarks, data crawling API, and iOS shortcut command without watermark downloads through the Web. You can deploy or modify this project yourself to achieve more functions, or you can call it directly in your project[scraper.py](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/blob/Stable/scraper.py)or install an existing[pip package](https://pypi.org/project/douyin-tiktok-scraper/)As a parsing library, it is easy to crawl data, etc.....
 
 _Some simple application scenarios:_
 
@@ -57,7 +57,7 @@ _Download prohibited videos, perform data analysis, download without watermark o
 
 [TikHub.io](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)Provides more than 700 endpoints that can be used to obtain and analyze data from 14+ social media platforms - including videos, users, comments, stores, products, trends, etc., complete all data access and analysis in one stop.
 
-If you want to support[Doinan_tics_download_api](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)For project development, we strongly recommend that you choose[TikHub.io](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)。
+If you want to support[Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)For project development, we strongly recommend that you choose[TikHub.io](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)。
 
 #### Features:
 
@@ -85,7 +85,7 @@ By checking in every day, you can get free quota. You can use my registration in
 
 -   Official website:[https://tikhub.io/](https://tikhub.io/?utm_source=github.com/Evil0ctal/Douyin_TikTok_Download_API&utm_medium=marketing_social&utm_campaign=retargeting&utm_content=carousel_ad)
 -   API documentation:<https://api.tikhub.io/docs>
--   Githubub:<https://github.com/TikHubIO/>
+-   GitHub：<https://github.com/TikHubIO/>
 -   Discord：<https://discord.com/invite/aMEAS8Xsvz>
 
 ## 🖥Demo site: I am very vulnerable...please do not stress test (·•᷄ࡇ•᷅ )
@@ -96,13 +96,13 @@ By checking in every day, you can get free quota. You can use my registration in
 
 🍟API Document:<https://douyin.wtf/docs>
 
-🌭tikub APU Docuration:<https://api.tikhub.io/docs>
+🌭TikHub API Document:<https://api.tikhub.io/docs>
 
 💾iOS Shortcut (shortcut command):[Shortcut release](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/discussions/104?sort=top)
 
 📦️Desktop downloader (recommended by warehouse):
 
--   [Johnserf-Seed/Tiktokdownload](https://github.com/Johnserf-Seed/TikTokDownload)
+-   [Johnserf-Seed/TikTokDownload](https://github.com/Johnserf-Seed/TikTokDownload)
 -   [HFrost0/bilix](https://github.com/HFrost0/bilix)
 -   [Tairraos/TikDown - \[needs update\]](https://github.com/Tairraos/TikDown/)
 
@@ -163,7 +163,7 @@ By checking in every day, you can get free quota. You can use my registration in
         -   [x] Obtain the data of collected works on the user's homepage
         -   [x] Get user homepage information
         -   [x] Get user collection work data
-        -   [x] Get user live stream data
+        -   [x] Get user live streaming data
         -   [x] Get the live streaming data of a specified user
         -   [x] Get the ranking of users who give gifts in the live broadcast room
         -   [x] Get single video comment data
@@ -188,7 +188,7 @@ By checking in every day, you can get free quota. You can use my registration in
         -   [x] Get user home page fan data
         -   [x] Get user homepage follow data
         -   [x] Get user homepage collection work data
-        -   [x] 获取用户主页搜藏数据
+        -   [x] Get user homepage collection data
         -   [x] Get user homepage playlist data
         -   [x] Get single video comment data
         -   [x] Get the comment reply data of the specified video
@@ -223,7 +223,7 @@ By checking in every day, you can get free quota. You can use my registration in
 
 ## 📦Call the parsing library (obsolete and needs to be updated):
 
-> 💡PIPI ：<https://pypi.org/project/douyin-tiktok-scraper/>
+> 💡PyPi：<https://pypi.org/project/douyin-tiktok-scraper/>
 
 Install the parsing library:`pip install douyin-tiktok-scraper`
 
@@ -389,7 +389,7 @@ Each part of this command does the following:
 
 -   `-d`: Run the container in the background (detached mode).
 -   `--name douyin_tiktok_api `: Name the container`douyin_tiktok_api `。
--   `-p 80:80`：将主机上的80端口映射到容器的80端口。根据您的配置或端口可用性调整端口号。
+-   `-p 80:80`: Map port 80 on the host to port 80 of the container. Adjust the port number based on your configuration or port availability.
 -   `evil0ctal/douyin_tiktok_download_api`: The name of the Docker image to use.
 
 ### Step 3: Verify the container is running
@@ -480,4 +480,4 @@ Web main interface:
 
 > Start: 2021/11/06
 
-> Githubub:[@Evil0ctal](https://github.com/Evil0ctal)
+> GitHub:[@Evil0ctal](https://github.com/Evil0ctal)
