@@ -163,7 +163,7 @@ By checking in every day, you can get free quota. You can use my registration in
         -   [x] Obtain the data of collected works on the user's homepage
         -   [x] Get user homepage information
         -   [x] Get user collection work data
-        -   [x] Get user live streaming data
+        -   [x] Get user live stream data
         -   [x] Get the live streaming data of a specified user
         -   [x] Get the ranking of users who give gifts in the live broadcast room
         -   [x] Get single video comment data
