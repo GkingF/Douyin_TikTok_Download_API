@@ -39,7 +39,7 @@ By checking in every day, you can get free quota. You can use my registration in
 
 > 🚨If you need to use a private server to run this project, please refer to:[Deployment preparations](./README.md#%EF%B8%8F%E9%83%A8%E7%BD%B2%E5%89%8D%E7%9A%84%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C%E8%AF%B7%E4%BB%94%E7%BB%86%E9%98%85%E8%AF%BB),[Docker deployment](./README.md#%E9%83%A8%E7%BD%B2%E6%96%B9%E5%BC%8F%E4%BA%8C-docker),[One-click deployment](./README.md#%E9%83%A8%E7%BD%B2%E6%96%B9%E5%BC%8F%E4%B8%80-linux)
 
-This project is based on[PyWebIO](https://github.com/pywebio/PyWebIO)，[speedy](https://fastapi.tiangolo.com/)，[HTTPX](https://www.python-httpx.org/), fast and asynchronous[Tik Tok](https://www.douyin.com/)/[TikTok](https://www.tiktok.com/)Data crawling tool, and realizes online batch parsing and downloading of videos or photo albums without watermarks, data crawling API, and iOS shortcut command without watermark downloads through the Web. You can deploy or modify this project yourself to achieve more functions, or you can call it directly in your project[scraper.py](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/blob/Stable/scraper.py)or install an existing[pip package](https://pypi.org/project/douyin-tiktok-scraper/)As a parsing library, it is easy to crawl data, etc.....
+This project is based on[PyWebIO](https://github.com/pywebio/PyWebIO)，[speedy](https://fastapi.tiangolo.com/)，[HTTPX](https://www.python-httpx.org/), fast and asynchronous[Tik Tok](https://www.douyin.com/)/[TikTok](https://www.tiktok.com/)Data crawling tool, and realizes online batch parsing and downloading of videos or photo albums without watermarks, data crawling API, and iOS shortcut commands without watermark downloads through the Web. You can deploy or modify this project yourself to achieve more functions, or you can call it directly in your project[scraper.py](https://github.com/Evil0ctal/Douyin_TikTok_Download_API/blob/Stable/scraper.py)or install an existing[pip package](https://pypi.org/project/douyin-tiktok-scraper/)As a parsing library, it is easy to crawl data, etc.....
 
 _Some simple application scenarios:_
 
@@ -152,7 +152,7 @@ By checking in every day, you can get free quota. You can use my registration in
 -   Batch parsing on the web page (supports Douyin/TikTok mixed parsing)
 -   Download videos or photo albums online.
 -   make[pip package](https://pypi.org/project/douyin-tiktok-scraper/)Conveniently and quickly import your projects
--   [iOS shortcut commands to quickly call API](https://apps.apple.com/cn/app/%E5%BF%AB%E6%8D%B7%E6%8C%87%E4%BB%A4/id915249334)Achieve in-app download of watermark-free videos/photo albums
+-   [iOS shortcut commands to quickly call API](https://apps.apple.com/cn/app/%E5%BF%AB%E6%8D%B7%E6%8C%87%E4%BB%A4/id915249334)Achieve downloading of watermark-free videos/photo albums within the application
 -   Complete API documentation ([Demo/Demonstration](https://api.douyin.wtf/docs))
 -   Rich API interface:
     -   Douyin web version API
