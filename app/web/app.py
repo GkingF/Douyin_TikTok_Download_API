@@ -96,7 +96,7 @@ class MainView:
                         tasks = response.json()
                         # 即使没有任务也显示表格框架，或者显示无任务提示
                         
-                        table_data = [['Task ID', 'Status', 'Platform', 'Created At', 'Action']]
+                        table_data = [['Task ID', 'Filename', 'Status', 'Platform', 'Created At', 'Action']]
                         if tasks:
                             # 按时间倒序
                             tasks.sort(key=lambda x: x.get('created_at', ''), reverse=True)
@@ -104,6 +104,12 @@ class MainView:
                             for task in tasks:
                                 meta = task.get('meta', {})
                                 task_id = task.get('id')
+                                saved_path = task.get('saved_path')
+                                
+                                if saved_path:
+                                    filename = os.path.basename(saved_path)
+                                else:
+                                    filename = meta.get('custom_name') or f"{meta.get('platform')}_{meta.get('video_id')}"
                                 
                                 # 创建查看详情的按钮
                                 def show_detail(tid=task_id):
@@ -120,6 +126,7 @@ class MainView:
 
                                 table_data.append([
                                     task_id[:8] + '...',
+                                    filename,
                                     task.get('status'),
                                     meta.get('platform', 'Unknown'),
                                     task.get('created_at'),

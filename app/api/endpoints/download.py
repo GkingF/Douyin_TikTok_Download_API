@@ -176,6 +176,8 @@ async def download_file_hybrid(request: Request,
     task_id = None
     try:
         task_meta = {'meta': {'url': url, 'platform': data.get('platform'), 'video_id': data.get('video_id')}}
+        if custom_name:
+            task_meta['meta']['custom_name'] = custom_name
         task_id = await _create_task_record({'status': 'running', 'meta': task_meta['meta']})
     except Exception:
         pass
