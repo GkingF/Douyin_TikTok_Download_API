@@ -124,7 +124,8 @@ async def download_file_hybrid(request: Request,
                                    description="视频或图片的URL地址，支持抖音|TikTok|Bilibili的分享链接，例如：https://v.douyin.com/e4J8Q7A/ 或 https://www.bilibili.com/video/BV1xxxxxxxxx"),
                                prefix: bool = True,
                                with_watermark: bool = False,
-                               only_server: bool = False):
+                               only_server: bool = False,
+                               custom_name: str = Query(None, description="自定义文件名（不含扩展名）/Custom filename (without extension)")):
     """
     # [中文]
     ### 用途:
@@ -192,7 +193,10 @@ async def download_file_hybrid(request: Request,
 
         # 下载视频文件/Download video file
         if data_type == 'video':
-            file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
+            if custom_name:
+                file_name = f"{file_prefix}{custom_name}.mp4" if not with_watermark else f"{file_prefix}{custom_name}_watermark.mp4"
+            else:
+                file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
             file_path = os.path.join(download_path, file_name)
 
             # 判断文件是否存在，存在就直接返回或仅保存在服务器
@@ -213,7 +217,7 @@ async def download_file_hybrid(request: Request,
             if only_server:
                 if task_id:
                     await _task_log(task_id, 'scheduled')
-                    asyncio.create_task(_run_background_task(task_id, data, prefix, with_watermark))
+                    asyncio.create_task(_run_background_task(task_id, data, prefix, with_watermark, custom_name))
                     return {'task_id': task_id}
                 else:
                     # Fallback if task creation failed but only_server requested
@@ -276,7 +280,10 @@ async def download_file_hybrid(request: Request,
         # 下载图片文件/Download image file
         elif data_type == 'image':
             # 压缩文件属性/Compress file properties
-            zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
+            if custom_name:
+                zip_file_name = f"{file_prefix}{custom_name}_images.zip" if not with_watermark else f"{file_prefix}{custom_name}_images_watermark.zip"
+            else:
+                zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
             zip_file_path = os.path.join(download_path, zip_file_name)
 
             # 判断文件是否存在，存在就直接返回或仅保存在服务器
@@ -298,7 +305,7 @@ async def download_file_hybrid(request: Request,
             if only_server:
                 if task_id:
                     await _task_log(task_id, 'scheduled')
-                    asyncio.create_task(_run_background_task(task_id, data, prefix, with_watermark))
+                    asyncio.create_task(_run_background_task(task_id, data, prefix, with_watermark, custom_name))
                     return {'task_id': task_id}
 
             urls = data.get('image_data').get('no_watermark_image_list') if not with_watermark else data.get(
@@ -436,7 +443,7 @@ async def bg_merge_bilibili_video_audio(video_url: str, audio_url: str, output_p
             pass
         return False
 
-async def _background_download_worker(data, prefix: bool, with_watermark: bool):
+async def _background_download_worker(data, prefix: bool, with_watermark: bool, custom_name: str = None):
     """Background worker to save video/image resources based on parsed `data`."""
     try:
         data_type = data.get('type')
@@ -447,7 +454,10 @@ async def _background_download_worker(data, prefix: bool, with_watermark: bool):
         os.makedirs(download_path, exist_ok=True)
 
         if data_type == 'video':
-            file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
+            if custom_name:
+                file_name = f"{file_prefix}{custom_name}.mp4" if not with_watermark else f"{file_prefix}{custom_name}_watermark.mp4"
+            else:
+                file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
             file_path = os.path.join(download_path, file_name)
 
             # skip if exists
@@ -485,7 +495,10 @@ async def _background_download_worker(data, prefix: bool, with_watermark: bool):
             return True
 
         elif data_type == 'image':
-            zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
+            if custom_name:
+                zip_file_name = f"{file_prefix}{custom_name}_images.zip" if not with_watermark else f"{file_prefix}{custom_name}_images_watermark.zip"
+            else:
+                zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
             zip_file_path = os.path.join(download_path, zip_file_name)
             if os.path.exists(zip_file_path):
                 logging.info("background: zip already exists %s", zip_file_path)
@@ -549,7 +562,7 @@ async def _create_task_record(initial: Dict[str, Any]) -> str:
         TASKS[task_id] = record
     return task_id
 
-async def _run_background_task(task_id: str, data: Dict[str, Any], prefix: bool, with_watermark: bool):
+async def _run_background_task(task_id: str, data: Dict[str, Any], prefix: bool, with_watermark: bool, custom_name: str = None):
     await _task_log(task_id, "task started")
     async with TASKS_LOCK:
         TASKS[task_id]['status'] = 'running'
@@ -565,21 +578,26 @@ async def _run_background_task(task_id: str, data: Dict[str, Any], prefix: bool,
 
         saved_path = None
         if data_type == 'video':
-            file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
+            if custom_name:
+                file_name = f"{file_prefix}{custom_name}.mp4" if not with_watermark else f"{file_prefix}{custom_name}_watermark.mp4"
+            else:
+                file_name = f"{file_prefix}{platform}_{video_id}.mp4" if not with_watermark else f"{file_prefix}{platform}_{video_id}_watermark.mp4"
             file_path = os.path.join(download_path, file_name)
-
             await _task_log(task_id, f"downloading video to {file_path}")
             # reuse background worker to perform actual download
-            success = await _background_download_worker(data, prefix, with_watermark)
+            success = await _background_download_worker(data, prefix, with_watermark, custom_name)
             if not success:
                 raise Exception('background worker failed')
             saved_path = os.path.relpath(file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
         elif data_type == 'image':
-            zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
+            if custom_name:
+                zip_file_name = f"{file_prefix}{custom_name}_images.zip" if not with_watermark else f"{file_prefix}{custom_name}_images_watermark.zip"
+            else:
+                zip_file_name = f"{file_prefix}{platform}_{video_id}_images.zip" if not with_watermark else f"{file_prefix}{platform}_{video_id}_images_watermark.zip"
             zip_file_path = os.path.join(download_path, zip_file_name)
             await _task_log(task_id, f"creating zip at {zip_file_path}")
-            success = await _background_download_worker(data, prefix, with_watermark)
+            success = await _background_download_worker(data, prefix, with_watermark, custom_name)
             if not success:
                 raise Exception('background worker failed')
             saved_path = os.path.relpath(zip_file_path, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))

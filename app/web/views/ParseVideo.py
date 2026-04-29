@@ -146,7 +146,7 @@ def parse_video():
         ]
         
         # 定义触发后台下载的函数
-        def trigger_server_download(target_url=url, p_prefix=True, p_watermark=False):
+        def trigger_server_download(target_url=url, p_prefix=True, p_watermark=False, custom_name=None):
             try:
                 host_ip = config['API']['Host_IP']
                 host_port = config['API']['Host_Port']
@@ -160,6 +160,8 @@ def parse_video():
                     'with_watermark': str(p_watermark).lower(),
                     'only_server': 'true'
                 }
+                if custom_name:
+                    params['custom_name'] = custom_name
                 
                 with put_loading():
                     response = requests.get(api_url, params=params, timeout=5)
@@ -199,6 +201,49 @@ def parse_video():
             table_list.insert(8, [ViewsUtils.t('下载视频-无水印至服务器目录', 'Video Download-No-Watermark to Server'),
                                   put_button(ViewsUtils.t('开始下载', 'Start Download'),
                                            onclick=lambda: trigger_server_download(url, True, False),
+                                           small=True)])
+            
+            # 添加带有语义化命名的下载按钮
+            import re
+            def get_semantic_name():
+                print(data)
+                author_nickname = data.get('author', {}).get('nickname', '')
+                video_desc = data.get('desc', '')
+                create_time = data.get('create_time')
+                if create_time:
+                    try:
+                        download_time = time.strftime("%Y%m%d", time.localtime(int(create_time)))
+                    except Exception:
+                        download_time = time.strftime("%Y%m%d")
+                else:
+                    download_time = time.strftime("%Y%m%d")
+                platform_name = data.get('platform', 'douyin')
+                
+                def sanitize(text):
+                    if not text: return ''
+                    # 过滤掉所有的空白字符（包括普通空格、全角空格、不换行空格等）
+                    text = re.sub(r'\s+', '', str(text))
+                    # 过滤掉所有不可见字符（包括控制字符、零宽字符等）
+                    text = "".join(c for c in text if c.isprintable())
+                    # 过滤掉系统不允许的文件名特殊字符
+                    return re.sub(r'[\\/:*?"<>|]', '', text)
+                    
+                safe_author = sanitize(author_nickname)
+                safe_desc = sanitize(video_desc)
+                
+                max_desc_len = 100 - len(platform_name) - len(safe_author) - len(download_time) - 3
+                if max_desc_len > 0:
+                    safe_desc = safe_desc[:max_desc_len]
+                else:
+                    safe_desc = ''
+                    
+                custom_name = f"{platform_name}.{safe_author}_{download_time}_{safe_desc}"
+                return custom_name[:120]
+                
+            semantic_name = get_semantic_name()
+            table_list.insert(9, [ViewsUtils.t('下载视频-无水印语义化命名至服务器', 'Video Download-Semantic Name to Server'),
+                                  put_button(ViewsUtils.t('开始下载', 'Start Download'),
+                                           onclick=lambda name=semantic_name: trigger_server_download(url, False, False, name),
                                            small=True)])
             # 添加视频信息
             table_list.insert(0, [
