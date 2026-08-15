@@ -231,14 +231,13 @@ def parse_video():
                 safe_author = sanitize(author_nickname)
                 safe_desc = sanitize(video_desc)
                 
-                max_desc_len = 100 - len(platform_name) - len(safe_author) - len(download_time) - 3
-                if max_desc_len > 0:
-                    safe_desc = safe_desc[:max_desc_len]
-                else:
-                    safe_desc = ''
-                    
                 custom_name = f"{platform_name}.{safe_author}_{download_time}_{safe_desc}"
-                return custom_name[:120]
+                # 限制最终生成的文件名（包含 .mp4 扩展名 4 字节）不超过 150 字节
+                max_bytes = 150 - len(".mp4".encode('utf-8'))
+                custom_name_bytes = custom_name.encode('utf-8')
+                if len(custom_name_bytes) > max_bytes:
+                    custom_name = custom_name_bytes[:max_bytes].decode('utf-8', errors='ignore')
+                return custom_name
                 
             semantic_name = get_semantic_name()
             table_list.insert(9, [ViewsUtils.t('下载视频-无水印语义化命名至服务器', 'Video Download-Semantic Name to Server'),
